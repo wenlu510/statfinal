@@ -1,0 +1,8 @@
+name: "Wen Lu"
+navbar:
+  title: "Wen Lu"
+  left:
+    - text: "Final Project"
+      href: fianl.html
+      
+      
