@@ -1,0 +1,267 @@
+---
+title: "What can Twitter tell us about Presdietnt Trump"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## *Getting Started*
+
+President Trump is no doubt one of the most controversial president in American history. From his healthcare plan to the massive potential for conflict of interest with his business and international pplitics, have you ever wonder how the nation felt on these particular issues? My project focuses exactly on that -- using twitter history to evaluate people's feelings towards President Trmup. 
+
+```{r include=FALSE}
+library(twitteR)
+setup_twitter_oauth(consumer_key="JLuR5e72FrkVrOHtSvv92wNYb",
+                    consumer_secret="VhtqRaTmmV36K8rtyu3FbUo7ABtPO2b61hUjbv1GqSkL6AS4Gs",
+                    access_token="835188268115329027-CpNWVAu1kkGYbrGEk7eGlkHAaZdES3R",
+                    access_secret="pKbjqkrFyrJWArCnHlXz2q2zYQ1lNUKaLqGlkZ0KGUWud")
+
+```
+
+
+## *@realDonaldTrump*
+
+First we will look at what people are twitting about President Trump using the code 
+
+```{r}
+trump<-searchTwitter("@realDonaldTrump", n=3200)
+```
+
+After pulling the data, we will transfrom the list of tweets into a data frame for us to analyze 
+
+```{r}
+tweet.df<-twListToDF(trump)
+```
+
+Based on the data I received from twitter, we can see what people are saying about President Trump using the wordcloud. 
+
+
+```{r include=FALSE}
+head(tweet.df$created)
+tail(tweet.df$created)
+library(NLP)
+library(tm)
+library(RColorBrewer)
+library(wordcloud)
+library(stringr)
+tweet1<- str_replace_all(tweet.df$text, "@\\w+", "")
+wordCorpus <- Corpus(VectorSource(tweet1))
+wordCorpus <- tm_map(wordCorpus, removePunctuation)
+wordCorpus <- tm_map(wordCorpus, content_transformer(tolower))
+wordCorpus <- tm_map(wordCorpus, removeWords, stopwords("english"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("donaldtrump","trump","will","is","do","he","his","the","be","with","I","on","your","from","as","to","https","like","one","ton","let","much","know","look","time","say"))
+wordCorpus <- tm_map(wordCorpus, stripWhitespace)
+wordCorpus <- tm_map(wordCorpus, stemDocument)
+wordCorpus <- tm_map(wordCorpus,PlainTextDocument)
+```
+
+```{r}
+wordcloud(wordCorpus,max.words=200,random.order=FALSE,random.color=TRUE,colors="blue")
+```
+
+We can get a general idea of what people are saying when they mention President Trump on twitter. However, it's hard to differentiate between trump supporters from the rest of population, therefore we can do a sentiment analysis to see how people feel about President Trump.
+
+### Sentiment Analysis
+
+```{r include=FALSE}
+library(syuzhet)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(reshape2)
+library(dplyr)
+x<-"í ½íºâ€¦"
+tweet.df$test<-gsub("[punct]",x=tweet.df$text, " ",x)
+tweet.df$test <- sapply(tweet.df$test,function(row) iconv(row, "latin1", "ASCII", sub=""))
+mySentiment <- get_nrc_sentiment(tweet.df$test)
+head(mySentiment)
+sentimentTotals<-data.frame(colMeans(mySentiment[,c(1:10)]))
+names(sentimentTotals)<-"count"
+sentimentTotals<-cbind("sentiment"=rownames(sentimentTotals),sentimentTotals)
+rownames(sentimentTotals)<-NULL
+```
+
+```{r}
+ggplot(data = sentimentTotals, aes(x = sentiment, y = count)) +
+geom_bar(aes(fill = sentiment), stat = "identity") +
+theme(legend.position = "none") +
+xlab("Sentiment") + ylab("Average") + ggtitle("Average Affect Score Per Tweet")
+```
+
+Based on this chart, it seems like people are gernally expressing negative sentiment, but on average it's only 0.1 higher than people who are expressing positive sentiment towards Trump. We also have to take into consideration the freedom people take with English on twitter. Some study even shows people are equally fail to complete both positive and negative words. Another thing we have to be aware of is the NRC lexicon doesn't assign any value to multple words string together without spacing. 
+
+
+
+## President Trump 
+
+Looking at what people are saying about President Trump is interesting, but I'm also interested in what President himself tweets about. Let's pull data from President Trump's twitter. 
+
+```{r}
+dtrump<-userTimeline('realdonaldtrump',n=3200)
+trumpdf<-twListToDF(dtrump)
+```
+
+Now let's use a wordcloud to get an idea on the words he uses most often
+
+```{r include=FALSE}
+tweets1<- str_replace_all(trumpdf$text, "@\\w+", "")
+wordCorpus <- Corpus(VectorSource(tweets1))
+wordCorpus <- tm_map(wordCorpus, removePunctuation)
+wordCorpus <- tm_map(wordCorpus, content_transformer(tolower))
+wordCorpus <- tm_map(wordCorpus, removeWords, stopwords("english"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("donaldtrump","trump","amp","makeamericagreatagin","will"))
+wordCorpus <- tm_map(wordCorpus, stripWhitespace)
+wordCorpus <- tm_map(wordCorpus, stemDocument)
+wordCorpus <- tm_map(wordCorpus,PlainTextDocument)
+```
+
+```{r}
+wordcloud(wordCorpus,max.words=100,random.order=FALSE,random.color=TRUE,colors="blue")
+```
+
+No suprise that our President's favorite words are "thank you" and "make America great again". It's very easy to pull out our President's go-to words and slogans using wordcloud. 
+
+### Sentiment Analysis
+
+Now let's do a sentiment analysis
+```{r include=FALSE}
+x<-"í ½íºâ€¦"
+trumpdf$test<-gsub("[punct]",x=trumpdf$text, " ",x)
+trumpdf$test <- sapply(trumpdf$test,function(row) iconv(row, "latin1", "ASCII", sub=""))
+mySentiment1 <- get_nrc_sentiment(trumpdf$test)
+head(mySentiment1)
+sentimentTotals1<-data.frame(colMeans(mySentiment1[,c(1:10)]))
+names(sentimentTotals1)<-"count"
+sentimentTotals1<-cbind("sentiment"=rownames(sentimentTotals1),sentimentTotals1)
+rownames(sentimentTotals1)<-NULL
+```
+
+```{r}
+ggplot(data = sentimentTotals1, aes(x = sentiment, y = count)) +
+geom_bar(aes(fill = sentiment), stat = "identity") +
+theme(legend.position = "none") +
+xlab("Sentiment") + ylab("Average") + ggtitle("Average Affect Score Per Tweet")
+```
+
+This is interesting, it appears that positive sentiment are a lot higher than negative sentiment in President Trump's tweets. Which makes sense, if you were a president, you would post more positive things to get the country behind you. 
+
+```{r include=FALSE}
+c<-cbind(trumpdf$favoriteCount,trumpdf$retweetCount,mySentiment1)
+c$favoritecount<-c$`trumpdf$favoriteCount`
+c$retweetcount<-c$`trumpdf$retweetCount`
+c$`trumpdf$favoriteCount`<-NULL
+c$`trumpdf$retweetCount`<-NULL
+library(psych)
+```
+
+Now I'm curious about what people notice most from President Trump's tweet, so I decided to conduct a correlation test. 
+```{r}
+corr.test(c)
+```
+
+Looking at the correlation matrix, we can see that digust, fear, sadness and negative tweets get favorited and retweeted more often. Digust and sadness are two factors that are statically significant for favorite count, and only negative is significant for retweet count. To take a closer look at how these factors are corrleated with favrorite and retweets, I'm going to do a regression analysis. 
+
+```{r}
+favoritecount<-lm(favoritecount~disgust+sadness,c)
+summary(favoritecount)
+```
+
+The significance for each variable appears to falls away based on the variance provide by the model, however the p-value is .01565 (which is less than the signficant level of .05), therefore the conclusion I had above still holds true -- disgust and sadness sentiments encourage others to favorite a tweet more frequently.
+
+Now let's look at the regression model for retweets 
+
+```{r}
+retweetcount<-lm(retweetcount~negative,c)
+summary(retweetcount)
+```
+
+This model shows us that the variable itself is signficant to the model (.00543), and the p-value (.005) indicates our theory holds -- negative sentiment tweets gets retweeted more than others. 
+
+Now, I'll create a graph to visually show how negative sentiment are corrleated with retweets. Additionally, I will plot disgust as the color variation in the graph to see if that give us more insight. 
+
+```{r}
+ggplot(data=c,aes(x=negative,y=retweetcount,color=disgust))+
+geom_point(size=3,shape=5)+
+scale_y_continuous("Retweets")+
+geom_smooth(data=c,method="lm")+
+theme(legend.position="none")+
+xlab("Negative Count") + ggtitle("Negative Sentiment predicting Retweets")
+```
+
+Same for the favorite counts, I will use disgust as predictor and sadness as the color variation. 
+```{r}
+ggplot(data=c,aes(x=disgust,y=favoritecount,color=sadness))+
+  geom_point(size=3,shape=5)+
+  scale_y_continuous("Retweets")+
+  geom_smooth(data=c,method="lm")+
+  theme(legend.position="none")+
+  xlab("Favorite Count") + ggtitle("Negative Sentiment predicting Favoritetweets")
+```
+
+### Principle Components 
+
+Let's use what's called principle components to give us a better understanding of how President Trump group his sentiments together. 
+
+```{r}
+pca<-prcomp(c,scale=TRUE)
+plot(pca)
+```
+
+The distribution of variance is not ideal, but it's something we can live with. now let's try to plot the variance from the first two factors to see if that will give us more insight 
+
+```{r}
+x32<-summary(pca)$x[,1:2]
+plot(x32,pch=16)
+p<-biplot(pca,cex=c(0.5,1))
+```
+
+Here you can see often time, joy, positive, anticipation, surprise and trust gets group together, and angery, negative, disgust group together near fewer retweet and favorite counts. 
+
+To gain more insight of how Trump group his sentiments together, we will look at another graph 
+```{r include=FALSE}
+library(reshape2)
+melted <- melt(pca$rotation[,1:9])
+```
+
+```{r}
+ggplot(data = melted[melted$Var2 == "PC1",]) +
+theme(legend.position = "none", 
+axis.text.x= element_text(angle=45, hjust = 1), 
+axis.ticks.x = element_blank()) + 
+xlab("Mr. Trump's twitter sentiments") +
+ylab("Relative importance in principle component") +
+ggtitle("Variables in PC1") +
+geom_bar(aes(x=Var1, y=value, fill=Var1), stat="identity")
+```
+
+PC1 shows us how things generally increase with one another, it's interesting how this seems to be counter intuitive to what we discovered in the regression model. Let's check PC2 and PC3. 
+
+```{r}
+ggplot(data = melted[melted$Var2 == "PC2",]) +
+theme(legend.position = "none", 
+axis.text.x= element_text(angle=45, hjust = 1), 
+axis.ticks.x = element_blank()) + 
+xlab("Mr. Trump's twitter sentiments") +
+ylab("Relative importance in principle component") +
+ggtitle("Variables in PC2") +
+geom_bar(aes(x=Var1, y=value, fill=Var1), stat="identity")
+```
+
+From PC2 we can see how negative emotions group together with favotie and retweet counts. 
+
+```{r}
+ggplot(data = melted[melted$Var2 == "PC3",]) +
+theme(legend.position = "none", 
+axis.text.x= element_text(angle=45, hjust = 1), 
+axis.ticks.x = element_blank()) + 
+xlab("Mr. Trump's twitter sentiments") +
+ylab("Relative importance in principle component") +
+ggtitle("Variables in PC3") +
+geom_bar(aes(x=Var1, y=value, fill=Var1), stat="identity")
+```
+
+The third analysis of variance gives us an idea of why so much of the variance went into third variables, favorite count and retweet counts are highly corrleated and share their own variance, this is highly unique from the rest of the variables. 
+
+### I hope this project provide you an interesting insight of what people are saying about Trump! 
