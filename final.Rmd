@@ -123,6 +123,51 @@ wordcloud(wordCorpus,max.words=100,random.order=FALSE,random.color=TRUE,colors="
 
 No suprise that our President's favorite words are "thank you" and "make America great again". It's very easy to pull out our President's go-to words and slogans using wordcloud. 
 
+### Trump's top ten tweets
+
+I'm also curious out of all the tweets, which ones gets most favorite and retweet, so let's look at President Trump's top ten tweets
+
+```{r include=FALSE}
+library(readr)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(RColorBrewer)
+setwd('~/Desktop/')
+tweetdata<-read.csv('tweets.csv', header=TRUE,sep=",")
+attach(tweetdata)
+trump <- filter(tweetdata, handle == "realDonaldTrump")
+trump <- trump %>% filter(is_retweet == "False") %>%
+  transmute(text, popularity = retweet_count + favorite_count, 
+            retweet_count, favorite_count) %>%
+  arrange(desc(popularity))
+trump$rank <- 1:nrow(trump)
+trump$text <- reorder(as.factor(trump$text), desc(trump$rank))
+bar.graph.data <- trump %>% rename(dummy = popularity) %>% 
+  mutate(dummy = 0)
+bar.graph.data <- bar.graph.data %>% gather(key = type, value = popularity, -rank, -text)
+bar.graph.data$text.as.character <- as.character(bar.graph.data$text)
+bar.graph.data$text.as.character[bar.graph.data$type != "dummy"]<- ""
+```
+
+```{r}
+bar.graph.data %>% filter(rank <= 10) %>%
+  ggplot(aes(x = text, y = popularity, fill = type)) +
+  geom_bar(stat = "identity") + coord_flip() +
+  scale_fill_brewer(palette = "Accent",
+                    guide = guide_legend(title = NULL),
+                    limits = c("favorite_count", "retweet_count"),
+                    labels = c("Favorite", "Retweet")) +
+  scale_y_continuous(labels = function(x){format(x, scientific = FALSE)}) +
+  geom_text(aes(label = text.as.character), size = 3.5, hjust = 0) +
+  ylab("Count") +
+  ggtitle("Donald Trump's top ten tweets") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+```
+
 ### Sentiment Analysis
 
 Now let's do a sentiment analysis
